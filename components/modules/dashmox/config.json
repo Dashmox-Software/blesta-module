@@ -1,0 +1,11 @@
+{
+    "name": "Dashmox",
+    "description": "Provision hosting on a Dashmox server: create, suspend, restore, terminate and change package.",
+    "version": "1.0.0",
+    "authors": [
+        {
+            "name": "Dashmox Software",
+            "url": "https://dashmox.com"
+        }
+    ]
+}

@@ -1,0 +1,61 @@
+<?php
+/**
+ * What the customer sees about their hosting, and nothing they can press.
+ *
+ * Read-only by decision: every change stays in the panel so it is built once.
+ * Each figure can be absent on its own without taking the page with it, and a
+ * figure that was never measured is never drawn as a reassuring zero.
+ */
+?>
+<div class="common_box_content">
+<?php if ($summary['problem']) { ?>
+    <div class="alert alert-warning"><?php $this->Html->_($summary['problem']); ?></div>
+<?php } ?>
+
+<?php if ($summary['domain']) { ?>
+    <table class="table">
+        <tbody>
+            <tr>
+                <td><?php $this->_('Dashmox.tab_client_hosting.domain');?></td>
+                <td><strong><?php $this->Html->_($summary['domain']); ?></strong></td>
+            </tr>
+            <tr>
+                <td>Status</td>
+                <td><?php $this->Html->_($summary['status'] ? $summary['status'] : 'unknown'); ?></td>
+            </tr>
+            <tr>
+                <td>Disk used</td>
+                <td>
+                    <?php if ($summary['disk'] === null) { ?>
+                        <span class="text-muted"><?php $this->_('Dashmox.tab_client_hosting.not_measured');?></span>
+                    <?php } else { ?>
+                        <?php echo number_format($summary['disk'] / 1048576, 1); ?> MB
+                    <?php } ?>
+                </td>
+            </tr>
+            <tr>
+                <td>Transfer, last 30 days</td>
+                <td>
+                    <?php if ($summary['transfer'] === null) { ?>
+                        <span class="text-muted"><?php $this->_('Dashmox.tab_client_hosting.not_measured');?></span>
+                    <?php } else { ?>
+                        <?php echo number_format($summary['transfer'] / 1048576, 1); ?> MB
+                    <?php } ?>
+                </td>
+            </tr>
+            <tr>
+                <td>Certificate</td>
+                <td>
+                    <?php if ($summary['ssl_days'] === null) { ?>
+                        <span class="text-muted">None yet</span>
+                    <?php } elseif ($summary['ssl_days'] < 0) { ?>
+                        <span class="label label-danger">Expired</span>
+                    <?php } else { ?>
+                        Expires in <?php echo (int) $summary['ssl_days']; ?> days
+                    <?php } ?>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+<?php } ?>
+</div>
