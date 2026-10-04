@@ -249,7 +249,12 @@ class Dashmox extends Module
                 'name' => $domain,
                 'domain' => $domain,
                 'runtime' => isset($package->meta->runtime) ? $package->meta->runtime : 'php',
-                'ssl' => true,
+                // No certificate yet. Somebody ordering hosting usually points
+                // the domain afterwards, and the panel refuses to issue for a
+                // name that does not resolve to it, which would fail the whole
+                // order. The panel's own sweep issues one as soon as the name
+                // starts resolving here.
+                'ssl' => false,
             ]);
         } catch (ApiError $e) {
             $this->Input->setErrors(['api' => ['response' => $this->explain($e)]]);
