@@ -154,7 +154,37 @@ class Dashmox extends Module
         $host = trim($meta->host);
         $port = !empty($meta->port) ? (int) $meta->port : 8443;
 
-        return new Panel(new Client('https://' . $host . ':' . $port, trim($meta->key)));
+        return new Panel(new Client(
+            'https://' . $host . ':' . $port,
+            trim($meta->key),
+            true,
+            30,
+            $this->transport()
+        ));
+    }
+
+    /**
+     * How the client reaches the network, or null for the real way.
+     *
+     * A seam rather than a setter, because Blesta builds a module by calling
+     * its constructor with nothing: there is nowhere to pass a transport in. A
+     * test subclass overrides this, which is what lets the sign on below be
+     * driven with canned answers rather than a socket.
+     */
+    protected function transport()
+    {
+        return null;
+    }
+
+    /**
+     * The panel's own sign-in page, for when no sign-on link can be had.
+     */
+    private function plainAddress($row)
+    {
+        $meta = $row->meta;
+        $port = !empty($meta->port) ? (int) $meta->port : 8443;
+
+        return 'https://' . trim($meta->host) . ':' . $port . '/';
     }
 
     /**
@@ -382,6 +412,13 @@ class Dashmox extends Module
         Loader::loadHelpers($this, ['Form', 'Html']);
 
         $ids = $this->recall($service);
+        // The one thing on this tab anybody can press. A post rather than a
+        // link, so that nothing mints a credential by being prefetched or
+        // bookmarked, and a redirect rather than a link drawn into the page,
+        // because what it mints lives ninety seconds and is spent when opened.
+        if (!empty($post)) {
+            $this->signOn($service, $ids);
+        }
         $summary = ['domain' => $ids['domain'], 'problem' => '', 'disk' => null, 'transfer' => null, 'ssl_days' => null, 'status' => ''];
         if ($ids['site_id'] !== '') {
             try {
@@ -419,6 +456,68 @@ class Dashmox extends Module
         $this->view->set('summary', $summary);
 
         return $this->view->fetch();
+    }
+
+    /**
+     * Sign this customer into their panel, and send them there.
+     *
+     * **Most customers have no panel password to type.** The panel customer is
+     * created by the integration key with no password, and so is the website's
+     * own account, so a link to the panel led to a sign-in page where the
+     * customer had no credentials. The panel mints a one-time link instead,
+     * good for ninety seconds and spent the moment it is opened.
+     *
+     * Where no link can be had, the panel's sign-in page is still a better
+     * answer than an error: an older panel, a key the operator did not give
+     * users.manage, or a website still being built. Only a panel that refused
+     * for some other reason, or one that could not be reached at all, is
+     * reported, because those two are worth somebody seeing.
+     */
+    private function signOn($service, array $ids)
+    {
+        $row = $this->getModuleRow();
+        if (!$row) {
+            $this->Input->setErrors(['module_row' => ['missing' => Language::_('Dashmox.!error.module_row.missing', true)]]);
+
+            return;
+        }
+
+        $url = '';
+        try {
+            if ($ids['site_id'] !== '') {
+                // Written into the panel's audit log as the claim it is: the
+                // panel cannot check it. An operator asking who went in gets
+                // an answer better than "the billing system".
+                $url = (string) $this->panel($row)->signOn(
+                    $ids['site_id'],
+                    'Blesta, service ' . (int) $service->id . ', client ' . (int) $service->client_id
+                );
+            }
+        } catch (ApiError $e) {
+            $this->Input->setErrors(['api' => ['response' => $this->explain($e)]]);
+
+            return;
+        } catch (Exception $e) {
+            $this->Input->setErrors(['api' => ['response' => Language::_('Dashmox.tab_client_hosting.unreachable', true)]]);
+
+            return;
+        }
+
+        $this->redirectTo($url !== '' ? $url : $this->plainAddress($row));
+    }
+
+    /**
+     * Hand the browser to a URL and stop.
+     *
+     * Its own method so a test can see where somebody was sent: a die() in the
+     * middle of the tab would take the suite with it. Blesta gives a module no
+     * redirect of its own, so sending the header and stopping is what Blesta's
+     * own modules do from a tab.
+     */
+    protected function redirectTo($url)
+    {
+        header('Location: ' . $url);
+        die();
     }
 
     /** A figure, or null when it was not measured rather than zero. */

@@ -1,13 +1,26 @@
 <?php
 /**
- * What the customer sees about their hosting, and nothing they can press.
+ * What the customer sees about their hosting, and the one thing they can press.
  *
- * Read-only by decision: every change stays in the panel so it is built once.
+ * Read-only otherwise, by decision: every change stays in the panel so it is
+ * built once. The button posts rather than linking anywhere, because the link
+ * it asks the panel for lives ninety seconds and is spent when opened: one
+ * drawn into this page would be dead before anybody pressed it.
+ *
  * Each figure can be absent on its own without taking the page with it, and a
  * figure that was never measured is never drawn as a reassuring zero.
  */
 ?>
 <div class="common_box_content">
+<?php if ($summary['domain']) { ?>
+    <?php $this->Form->create('', ['class' => 'mb-3']); ?>
+        <button type="submit" name="sign_on" value="1" class="btn btn-default">
+            <?php $this->_('Dashmox.tab_client_hosting.sign_on'); ?>
+        </button>
+        <span class="text-muted"><?php $this->_('Dashmox.tab_client_hosting.sign_on_note'); ?></span>
+    <?php $this->Form->end(); ?>
+<?php } ?>
+
 <?php if ($summary['problem']) { ?>
     <div class="alert alert-warning"><?php $this->Html->_($summary['problem']); ?></div>
 <?php } ?>

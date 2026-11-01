@@ -23,6 +23,12 @@ if (!defined('DS')) {
 class Module
 {
     public $base_uri = '/';
+    // Declared because Blesta's Loader sets them on the module from outside.
+    // PHP 8.4 deprecates a dynamic property, and eleven deprecation lines in
+    // the output of a suite is how a real notice goes unread.
+    public $Input;
+    public $Form;
+    public $Html;
     protected $view;
     protected $module_row;
 
@@ -206,6 +212,122 @@ check('a failure reads as not measured', $measured->invoke($subject, function ()
     throw new RuntimeException('the panel is down');
 }), null);
 check('a real zero is still zero', $measured->invoke($subject, fn () => 0), 0);
+
+// -----------------------------------------------------------------------------
+// The sign on, which is the only way most customers can get in.
+//
+// A website sold through billing has no password anybody knows: the panel
+// customer and the website's own account are both created without one. So this
+// button is the credential, and what it does when there is no link to be had
+// matters as much as what it does when there is.
+
+class TestableDashmox extends Dashmox
+{
+    /** Canned answers, taken in order, and a record of what was asked. */
+    public array $replies = [];
+    public array $asked = [];
+    public array $sent = [];
+
+    protected function transport()
+    {
+        return function ($method, $url, $body, $headers) {
+            $this->asked[] = ['method' => $method, 'url' => $url, 'body' => (string) $body];
+            $reply = array_shift($this->replies);
+
+            // A request this test did not plan for is a failure of the test,
+            // not a panel refusal, and it should read like one.
+            return $reply ? $reply : ['status' => 599, 'body' => '{"error":"no canned answer"}', 'headers' => []];
+        };
+    }
+
+    /** Recorded rather than sent: a die() here would take the suite with it. */
+    protected function redirectTo($url)
+    {
+        $this->sent[] = $url;
+    }
+}
+
+function signOnSubject(array $replies)
+{
+    $module = new TestableDashmox();
+    $module->replies = $replies;
+    $row = new stdClass();
+    $row->meta = (object) ['host' => 'cp.example.com', 'port' => '8443', 'key' => 'dashmox_abc123'];
+    $module->setModuleRow($row);
+
+    $service = new stdClass();
+    $service->id = 77;
+    $service->client_id = 12;
+    $service->fields = [
+        (object) ['key' => 'dashmox_domain', 'value' => 'one.example'],
+        (object) ['key' => 'dashmox_site_id', 'value' => 'site_1'],
+    ];
+
+    return [$module, $service];
+}
+
+$minted = ['status' => 201, 'body' => '{"url":"https://cp.example.com:8443/api/v1/sign-on?token=abc"}', 'headers' => []];
+
+// Pressing the button is what mints the link, and the tab is where the press
+// arrives. Blesta hands a module the post, so an empty one means somebody is
+// only looking at the page.
+list($module, $service) = signOnSubject([$minted]);
+$module->tabClientHosting(new stdClass(), $service, [], ['sign_on' => '1']);
+check('pressing the button signs the customer in',
+    $module->sent, ['https://cp.example.com:8443/api/v1/sign-on?token=abc']);
+check('the link is asked of their own website',
+    $module->asked[0]['url'], 'https://cp.example.com:8443/api/v1/sites/site_1/sign-on');
+// The panel cannot check this, so it is written down as the claim it is. An
+// operator asking who went in deserves better than "the billing system".
+check('and the panel is told who asked for it',
+    strpos($module->asked[0]['body'], 'Blesta, service 77, client 12') !== false, true);
+
+list($looking) = signOnSubject([$minted]);
+$looking->tabClientHosting(new stdClass(), $service, [], []);
+check('nothing is minted by looking at the page', $looking->sent, []);
+$requested = false;
+foreach ($looking->asked as $one) {
+    if (strpos($one['url'], '/sign-on') !== false) { $requested = true; }
+}
+check('and no link is asked for either', $requested, false);
+
+// The three refusals the customer can do nothing about. Each lands them on the
+// panel's sign-in page, which is where the old link went, rather than on an
+// error: an older panel, a key without users.manage, and a website still being
+// built. The last one clears on its own.
+$signOn = (new ReflectionClass('Dashmox'))->getMethod('signOn');
+$signOn->setAccessible(true);
+$ids = ['domain' => 'one.example', 'customer_id' => '', 'site_id' => 'site_1'];
+
+foreach ([
+    'a panel older than the feature' => 404,
+    'a key without users.manage' => 403,
+    'a website still being built' => 409,
+] as $what => $status) {
+    list($refused, $service) = signOnSubject([
+        ['status' => $status, 'body' => '{"error":"no"}', 'headers' => []],
+    ]);
+    $signOn->invoke($refused, $service, $ids);
+    check($what . ' lands on the sign-in page', $refused->sent, ['https://cp.example.com:8443/']);
+}
+
+// Anything else is worth somebody seeing, so it is reported and the customer is
+// sent nowhere. A refusal swallowed into a redirect reads to a customer as a
+// panel that lost their password.
+list($broken, $service) = signOnSubject([
+    ['status' => 500, 'body' => '{"error":"the panel fell over"}', 'headers' => []],
+]);
+$signOn->invoke($broken, $service, $ids);
+check('any other refusal is reported instead', $broken->sent, []);
+check('and it says what the panel said',
+    $broken->Input->errors(), ['api' => ['response' => 'the panel fell over']]);
+
+// A service with no website recorded is not asked about. Asking would be a
+// request for a link to nothing, and the answer would be the same.
+list($unbuilt, $service) = signOnSubject([$minted]);
+$signOn->invoke($unbuilt, $service, ['domain' => 'one.example', 'customer_id' => '', 'site_id' => '']);
+check('a service with no website asks for no link', $unbuilt->asked, []);
+check('and still lands on the sign-in page', $unbuilt->sent, ['https://cp.example.com:8443/']);
 
 echo "\n$ran checks, $failures failed\n";
 exit($failures === 0 ? 0 : 1);

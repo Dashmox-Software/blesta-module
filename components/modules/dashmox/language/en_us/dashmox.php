@@ -23,6 +23,8 @@ $lang['Dashmox.service_fields.domain'] = 'Domain';
 $lang['Dashmox.tab_client_hosting'] = 'Hosting';
 $lang['Dashmox.tab_client_hosting.unreachable'] = 'The panel could not be reached just now.';
 $lang['Dashmox.tab_client_hosting.not_measured'] = 'Not measured yet';
+$lang['Dashmox.tab_client_hosting.sign_on'] = 'Open my control panel';
+$lang['Dashmox.tab_client_hosting.sign_on_note'] = 'No password to remember: the panel is asked for a one time link when you press this.';
 
 // The refusals. Each says what to do next, because a message that only says
 // what went wrong leaves somebody to guess the rest.

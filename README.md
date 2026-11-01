@@ -28,7 +28,10 @@ transfer over the last thirty days and when the certificate expires.
   in the panel under **Server**, then **Integrations**.
 
 Grant the key these permissions: `customers.manage`, `sites.create`,
-`sites.view`, `sites.edit`, `sites.delete`, `server.view`. It reaches only the
+`sites.view`, `sites.edit`, `sites.delete`, `server.view`, `users.manage`.
+
+`users.manage` is only for the sign on button below, and without it the button
+lands on the panel's own sign in page instead. It reaches only the
 routes that name a permission it holds, so nothing else is open to it whatever
 else you tick.
 
@@ -49,19 +52,30 @@ working when the administrator who made it leaves.
 Then add a package that uses this module and set its name to a hosting plan that
 exists on the panel.
 
+## Signing your client in
+
+A website sold through Blesta has no password anybody knows. The panel customer
+is created by the integration key and nothing ever sets one on it, and neither
+does the website's own account, so a link to the panel led to a sign in page
+where your client had no credentials. The **Open my control panel** button on
+their Hosting tab carries no password either: it asks the panel for a one time
+link when it is pressed, good for ninety seconds and spent the moment it is
+opened.
+
+It posts rather than linking, so that nothing mints a credential by being
+prefetched or bookmarked, and it redirects rather than drawing the link into the
+page, because a link that lives ninety seconds would be dead before anybody
+pressed it.
+
+It needs a panel on **0.99.30 or newer** and a key holding `users.manage`.
+Without either, the button lands on the panel's sign in page instead, which is
+where the old link went.
+
 ## What it does not do
 
 Stated plainly, because a module that quietly does nothing is worse than one
 that says it cannot.
 
-* **No single sign on yet.** The panel mints one time sign on links as of
-  0.99.30 and the client under `lib/` can ask for one, but no button on the
-  service tab calls it: the handoff lands in your client's browser, and that is
-  worth shipping only once it has been driven by a real Blesta. The
-  [FOSSBilling manager](https://github.com/Dashmox-Software/fossbilling-server-manager)
-  has it today, built on the same client. Meanwhile every hosted domain answers
-  `/dashmox` with a redirect to the sign in page, so your client can still get
-  there.
 * **No password changes.** The route exists on the panel and is deliberately
   closed to integration credentials. Setting a website account's password is the
   difference between an integration doing an account's work and becoming the
