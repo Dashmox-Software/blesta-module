@@ -54,9 +54,14 @@ exists on the panel.
 Stated plainly, because a module that quietly does nothing is worse than one
 that says it cannot.
 
-* **No single sign on.** The panel mints no one time session, so there is no
-  "log in to your panel" button. Every hosted domain answers `/dashmox` with a
-  redirect to the sign in page, so your client can still get there.
+* **No single sign on yet.** The panel mints one time sign on links as of
+  0.99.30 and the client under `lib/` can ask for one, but no button on the
+  service tab calls it: the handoff lands in your client's browser, and that is
+  worth shipping only once it has been driven by a real Blesta. The
+  [FOSSBilling manager](https://github.com/Dashmox-Software/fossbilling-server-manager)
+  has it today, built on the same client. Meanwhile every hosted domain answers
+  `/dashmox` with a redirect to the sign in page, so your client can still get
+  there.
 * **No password changes.** The route exists on the panel and is deliberately
   closed to integration credentials. Setting a website account's password is the
   difference between an integration doing an account's work and becoming the

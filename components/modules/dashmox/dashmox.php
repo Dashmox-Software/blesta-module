@@ -196,7 +196,7 @@ class Dashmox extends Module
         return $fields;
     }
 
-    public function validateService($package, array $vars = null)
+    public function validateService($package, ?array $vars = null)
     {
         $this->Input->setRules([
             'dashmox_domain' => [
@@ -219,7 +219,7 @@ class Dashmox extends Module
      * one day find the wrong website, and a termination that found the wrong
      * one is not recoverable.
      */
-    public function addService($package, array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
+    public function addService($package, ?array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
     {
         $row = $this->getModuleRow();
         if (!$row) {
@@ -374,7 +374,7 @@ class Dashmox extends Module
         return ['tabClientHosting' => Language::_('Dashmox.tab_client_hosting', true)];
     }
 
-    public function tabClientHosting($package, $service, array $get = null, array $post = null, array $files = null)
+    public function tabClientHosting($package, $service, ?array $get = null, ?array $post = null, ?array $files = null)
     {
         $this->view = new View('tab_client_hosting', 'default');
         $this->view->base_uri = $this->base_uri;
@@ -449,7 +449,7 @@ class Dashmox extends Module
         return $out;
     }
 
-    private function getClientDetails(array $vars = null)
+    private function getClientDetails(?array $vars = null)
     {
         $out = ['name' => '', 'email' => '', 'company' => '', 'address' => '', 'city' => '', 'postcode' => '', 'country' => ''];
         if (empty($vars['client_id'])) {
